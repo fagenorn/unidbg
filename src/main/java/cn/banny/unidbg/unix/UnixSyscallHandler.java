@@ -187,16 +187,24 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
             return minFd;
         }
 
+        if ("/proc/self/status".equals(pathname) || ("/proc/" + emulator.getPid() + "/status").equals(pathname)) {
+            io = new StatusFileIO(oflags, pathname, emulator);
+            this.fdMap.put(minFd, io);
+            return minFd;
+        }
+
         if ("/proc/self/maps".equals(pathname) || ("/proc/" + emulator.getPid() + "/maps").equals(pathname)) {
             io = new MapsFileIO(oflags, pathname, emulator.getMemory().getLoadedModules(), memNamedRegions);
             this.fdMap.put(minFd, io);
             return minFd;
         }
+
         FileIO driverIO = DriverFileIO.create(oflags, pathname);
         if (driverIO != null) {
             this.fdMap.put(minFd, driverIO);
             return minFd;
         }
+
         if (IO.STDIN.equals(pathname)) {
             io = new Stdin(oflags);
             this.fdMap.put(minFd, io);
