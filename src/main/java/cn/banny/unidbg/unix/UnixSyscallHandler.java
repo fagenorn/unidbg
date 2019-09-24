@@ -70,9 +70,23 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
                 }
             }
         }
+
+        if (pathname.startsWith("/proc/self/fd/") || pathname.startsWith("/proc/" + emulator.getPid() + "/fd/")) {
+            try {
+                int fd = Integer.parseInt(pathname.substring(pathname.lastIndexOf("/") + 1));
+                FileIO io = fdMap.get(fd);
+                if (io != null) {
+                    return io;
+                }
+            } catch (NumberFormatException e) {
+                // ignored
+            }
+        }
+
         if ("/tmp".equals(pathname) || "/tmp/".equals(pathname)) {
             return new DirectoryFileIO(oflags, pathname);
         }
+
         return null;
     }
 
@@ -100,7 +114,8 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
 
         if (tz != null) {
             Calendar calendar = Calendar.getInstance();
-            int tz_minuteswest = -(calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET)) / (60 * 1000);
+            int tz_minuteswest = -(calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET))
+                    / (60 * 1000);
             TimeZone timeZone = new TimeZone(tz);
             timeZone.tz_minuteswest = tz_minuteswest;
             timeZone.tz_dsttime = 0;
@@ -231,24 +246,24 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
         }
 
         switch (signum) {
-            case SIGHUP:
-            case SIGINT:
-            case SIGQUIT:
-            case SIGILL:
-            case SIGABRT:
-            case SIGSEGV:
-            case SIGPIPE:
-            case SIGALRM:
-            case SIGTERM:
-            case SIGCHLD:
-            case SIGTSTP:
-            case SIGTTIN:
-            case SIGTTOU:
-            case SIGWINCH:
-                if (act != null) {
-                    sigMap.put(signum, act.getByteArray(0, ACT_SIZE));
-                }
-                return 0;
+        case SIGHUP:
+        case SIGINT:
+        case SIGQUIT:
+        case SIGILL:
+        case SIGABRT:
+        case SIGSEGV:
+        case SIGPIPE:
+        case SIGALRM:
+        case SIGTERM:
+        case SIGCHLD:
+        case SIGTSTP:
+        case SIGTTIN:
+        case SIGTTOU:
+        case SIGWINCH:
+            if (act != null) {
+                sigMap.put(signum, act.getByteArray(0, ACT_SIZE));
+            }
+            return 0;
         }
 
         throw new UnsupportedOperationException("signum=" + signum);
@@ -268,10 +283,12 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
         return file.connect(addr, addrlen);
     }
 
-    protected final int sendto(Emulator emulator, int sockfd, Pointer buf, int len, int flags, Pointer dest_addr, int addrlen) {
+    protected final int sendto(Emulator emulator, int sockfd, Pointer buf, int len, int flags, Pointer dest_addr,
+            int addrlen) {
         byte[] data = buf.getByteArray(0, len);
         if (log.isDebugEnabled()) {
-            Inspector.inspect(data, "sendto sockfd=" + sockfd + ", buf=" + buf + ", flags=" + flags + ", dest_addr=" + dest_addr + ", addrlen=" + addrlen);
+            Inspector.inspect(data, "sendto sockfd=" + sockfd + ", buf=" + buf + ", flags=" + flags + ", dest_addr="
+                    + dest_addr + ", addrlen=" + addrlen);
         }
         FileIO file = fdMap.get(sockfd);
         if (file == null) {

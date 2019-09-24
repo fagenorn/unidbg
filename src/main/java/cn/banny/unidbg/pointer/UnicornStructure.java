@@ -9,19 +9,23 @@ import java.lang.reflect.InvocationTargetException;
 
 public abstract class UnicornStructure extends Structure {
 
-    /** Placeholder pointer to help avoid auto-allocation of memory where a
-     * Structure needs a valid pointer but want to avoid actually reading from it.
+    /**
+     * Placeholder pointer to help avoid auto-allocation of memory where a Structure
+     * needs a valid pointer but want to avoid actually reading from it.
      */
     private static final Pointer PLACEHOLDER_MEMORY = new Pointer(0) {
         @Override
-        public Pointer share(long offset, long sz) { return this; }
+        public Pointer share(long offset, long sz) {
+            return this;
+        }
     };
 
     public static int calculateSize(Class<? extends UnicornStructure> type) {
         try {
             Constructor<? extends UnicornStructure> constructor = type.getConstructor(Pointer.class);
             return constructor.newInstance(PLACEHOLDER_MEMORY).calculateSize(false);
-        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException
+                | InvocationTargetException e) {
             throw new IllegalStateException(e);
         }
     }
@@ -30,6 +34,10 @@ public abstract class UnicornStructure extends Structure {
         super(p);
 
         checkPointer(p);
+    }
+
+    protected UnicornStructure() {
+        super();
     }
 
     private void checkPointer(Pointer p) {
