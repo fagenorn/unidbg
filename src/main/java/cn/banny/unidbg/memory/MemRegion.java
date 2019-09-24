@@ -11,17 +11,19 @@ public class MemRegion implements Comparable<MemRegion> {
     public final int perms;
     private final LibraryFile libraryFile;
     public final long offset;
+    public final String name;
 
-    public MemRegion(long begin, long end, int perms, LibraryFile libraryFile, long offset) {
+    public MemRegion(long begin, long end, int perms, LibraryFile libraryFile, long offset, String name) {
         this.begin = begin;
         this.end = end;
         this.perms = perms;
         this.libraryFile = libraryFile;
         this.offset = offset;
+        this.name = name;
     }
 
     public String getName() {
-        return libraryFile.getMapRegionName();
+        return name != null ? name : libraryFile.getMapRegionName();
     }
 
     public byte[] readLibrary() throws IOException {

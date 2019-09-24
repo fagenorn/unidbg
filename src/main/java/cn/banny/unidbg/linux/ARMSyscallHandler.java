@@ -95,7 +95,7 @@ public class ARMSyscallHandler extends UnixSyscallHandler implements SyscallHand
                 throw new IllegalStateException("svc number: " + svcNumber);
             }
 
-            if (log.isDebugEnabled()) {
+            if (log.isTraceEnabled()) {
                 ARM.showThumbRegs(u);
             }
 
@@ -456,6 +456,10 @@ public class ARMSyscallHandler extends UnixSyscallHandler implements SyscallHand
         String symPath = io.toString();
         byte[] symBytes = symPath.getBytes();
         buffer.setString(0, symPath);
+
+        if (log.isDebugEnabled()) {
+            log.debug("readlinkat sympath=" + symPath);
+        }
 
         return symBytes.length;
     }
@@ -1460,8 +1464,9 @@ public class ARMSyscallHandler extends UnixSyscallHandler implements SyscallHand
     private static final int BIONIC_PR_SET_VMA = 0x53564d41;
 
     private int prctl(Unicorn u, Emulator emulator) {
-        int option = ((Number) u.reg_read(ArmConst.UC_ARM_REG_R0)).intValue();
-        long arg2 = ((Number) u.reg_read(ArmConst.UC_ARM_REG_R1)).intValue() & 0xffffffffL;
+        Arm32RegisterContext context = emulator.getContext();
+        int option = context.getR0Int();
+        long arg2 = context.getR1Int() & 0xffffffffL;
         if (log.isDebugEnabled()) {
             log.debug("prctl option=0x" + Integer.toHexString(option) + ", arg2=0x" + Long.toHexString(arg2));
         }
@@ -1475,14 +1480,15 @@ public class ARMSyscallHandler extends UnixSyscallHandler implements SyscallHand
             }
             return 0;
         case BIONIC_PR_SET_VMA:
-            Pointer addr = UnicornPointer.register(emulator, ArmConst.UC_ARM_REG_R2);
-            int len = ((Number) u.reg_read(ArmConst.UC_ARM_REG_R3)).intValue();
-            Pointer pointer = UnicornPointer.register(emulator, ArmConst.UC_ARM_REG_R4);
+            UnicornPointer addr = context.getR2Pointer();
+            int len = context.getR3Int();
+            Pointer pointer = context.getR4Pointer();
             if (log.isDebugEnabled()) {
                 log.debug("prctl addr=" + addr + ", len=" + len + ", pointer=" + pointer + ", name="
                         + pointer.getString(0));
             }
-            return 0;
+
+            return prctl(addr, len, pointer.getString(0));
         }
         throw new UnsupportedOperationException("option=" + option);
     }

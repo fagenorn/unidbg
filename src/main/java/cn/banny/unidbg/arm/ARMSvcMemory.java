@@ -50,7 +50,8 @@ public class ARMSvcMemory implements SvcMemory {
         if (log.isDebugEnabled()) {
             log.debug("allocate size=" + size + ", label=" + label + ", base=" + base);
         }
-        memRegions.add(new MemRegion(pointer.peer, pointer.peer + size, UnicornConst.UC_PROT_READ | UnicornConst.UC_PROT_EXEC, null, 0) {
+        memRegions.add(new MemRegion(pointer.peer, pointer.peer + size,
+                UnicornConst.UC_PROT_READ | UnicornConst.UC_PROT_EXEC, null, 0, null) {
             @Override
             public String getName() {
                 return label;

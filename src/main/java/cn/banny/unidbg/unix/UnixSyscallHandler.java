@@ -8,9 +8,12 @@ import cn.banny.unidbg.file.IOResolver;
 import cn.banny.unidbg.linux.LinuxThread;
 import cn.banny.unidbg.linux.file.*;
 import cn.banny.unidbg.memory.MemRegion;
+import cn.banny.unidbg.pointer.UnicornPointer;
 import cn.banny.unidbg.spi.SyscallHandler;
 import cn.banny.unidbg.unix.struct.TimeVal;
 import cn.banny.unidbg.unix.struct.TimeZone;
+import unicorn.UnicornConst;
+
 import com.sun.jna.Pointer;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.Log;
@@ -27,6 +30,8 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
     private final List<IOResolver> resolvers = new ArrayList<>(5);
 
     public final Map<Integer, FileIO> fdMap = new TreeMap<>();
+
+    private final List<MemRegion> memNamedRegions = new ArrayList<>();
 
     public final Map<Integer, LinuxThread> threadMap = new HashMap<>(5);
     public int lastThread = -1;
@@ -48,6 +53,18 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
         if (!resolvers.contains(resolver)) {
             resolvers.add(0, resolver);
         }
+    }
+
+    protected final int prctl(UnicornPointer pointer, int len, String name) {
+        memNamedRegions.add(new MemRegion(pointer.peer, pointer.peer + len,
+                UnicornConst.UC_PROT_READ | UnicornConst.UC_PROT_EXEC, null, 0, "[anon:" + name + "]"));
+
+        if (log.isDebugEnabled()) {
+            log.debug("prctl name=" + "[anon:" + name + "]" + " ,region="
+                    + String.format("%08x-%08x", pointer.peer, pointer.peer + len));
+        }
+
+        return 0;
     }
 
     protected final FileIO resolve(Emulator emulator, String pathname, int oflags) {
@@ -142,8 +159,8 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
     }
 
     protected final int read(Emulator emulator, int fd, Pointer buffer, int count) {
-        if (log.isDebugEnabled()) {
-            log.debug("read fd=" + fd + ", buffer=" + buffer + ", count=" + count);
+        if (log.isTraceEnabled()) {
+            log.trace("read fd=" + fd + ", buffer=" + buffer + ", count=" + count);
         }
 
         FileIO file = fdMap.get(fd);
@@ -171,7 +188,7 @@ public abstract class UnixSyscallHandler implements SyscallHandler {
         }
 
         if ("/proc/self/maps".equals(pathname) || ("/proc/" + emulator.getPid() + "/maps").equals(pathname)) {
-            io = new MapsFileIO(oflags, pathname, emulator.getMemory().getLoadedModules());
+            io = new MapsFileIO(oflags, pathname, emulator.getMemory().getLoadedModules(), memNamedRegions);
             this.fdMap.put(minFd, io);
             return minFd;
         }

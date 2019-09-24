@@ -17,16 +17,19 @@ public class MapsFileIO extends ByteArrayFileIO implements FileIO {
 
     private static final Log log = LogFactory.getLog(MapsFileIO.class);
 
-    public MapsFileIO(int oflags, String path, Collection<Module> modules) {
-        super(oflags, path, getMapsData(modules));
+    public MapsFileIO(int oflags, String path, Collection<Module> modules, List<MemRegion> namedMemRegions) {
+        super(oflags, path, getMapsData(modules, namedMemRegions));
     }
 
-    private static byte[] getMapsData(Collection<Module> modules) {
+    private static byte[] getMapsData(Collection<Module> modules, List<MemRegion> namedMemRegions) {
         List<MemRegion> list = new ArrayList<>(modules.size());
         for (Module module : modules) {
             list.addAll(module.getRegions());
         }
+
+        list.addAll(namedMemRegions);
         Collections.sort(list);
+
         StringBuilder builder = new StringBuilder();
         for (MemRegion memRegion : list) {
             builder.append(String.format("%08x-%08x", memRegion.begin, memRegion.end)).append(' ');
@@ -47,12 +50,25 @@ public class MapsFileIO extends ByteArrayFileIO implements FileIO {
             }
             builder.append("p ");
             builder.append(String.format("%08x", memRegion.offset));
-            builder.append(" b3:19 0");
+
+            String name = memRegion.getName();
+            if (name.startsWith("[")) {
+                builder.append(" 00:00 0");
+            } else {
+                builder.append(" b3:19 0");
+            }
+
             for (int i = 0; i < 10; i++) {
                 builder.append(' ');
             }
-            builder.append(memRegion.getName());
+
+            builder.append(name);
             builder.append('\n');
+        }
+
+        for (
+
+        MemRegion memRegion : namedMemRegions) {
         }
         builder.append("ffff0000-ffff1000 r-xp 00000000 00:00 0          [vectors]");
         if (log.isDebugEnabled()) {
